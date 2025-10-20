@@ -58,7 +58,7 @@ async function main() {
   console.log('✅ Created editor:', editor.email)
 
   // Create sample markdown content for home page
-  const heroContent = await prisma.markdownContent.upsert({
+  await prisma.markdownContent.upsert({
     where: {
       tenantId_key_locale: {
         tenantId: tenant.id,
@@ -77,7 +77,7 @@ Tu salud es nuestra prioridad. Ofrecemos servicios médicos de calidad con un eq
     },
   })
 
-  const aboutContent = await prisma.markdownContent.upsert({
+  await prisma.markdownContent.upsert({
     where: {
       tenantId_key_locale: {
         tenantId: tenant.id,
@@ -97,7 +97,7 @@ Con más de 20 años de experiencia, somos líderes en atención médica integra
   })
 
   // Create sample pages
-  const homePage = await prisma.page.upsert({
+  await prisma.page.upsert({
     where: {
       tenantId_slug_locale: {
         tenantId: tenant.id,
@@ -140,7 +140,7 @@ Con más de 20 años de experiencia, somos líderes en atención médica integra
 
   console.log('✅ Created home page')
 
-  const aboutPage = await prisma.page.upsert({
+  await prisma.page.upsert({
     where: {
       tenantId_slug_locale: {
         tenantId: tenant.id,
@@ -176,7 +176,7 @@ Con más de 20 años de experiencia, somos líderes en atención médica integra
 
   console.log('✅ Created about page')
 
-  const servicesPage = await prisma.page.upsert({
+  await prisma.page.upsert({
     where: {
       tenantId_slug_locale: {
         tenantId: tenant.id,
