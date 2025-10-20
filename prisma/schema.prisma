@@ -1,0 +1,217 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Multi-tenant model
+model Tenant {
+  id        String   @id @default(cuid())
+  name      String
+  domain    String   @unique
+  logoUrl   String?
+  // Branding configuration
+  primaryColor   String   @default("#007bff")
+  secondaryColor String   @default("#6c757d")
+  fontFamily     String   @default("Inter, sans-serif")
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  users           User[]
+  pages           Page[]
+  media           Media[]
+  markdownContent MarkdownContent[]
+  
+  @@index([domain])
+}
+
+// User and authentication models
+enum UserRole {
+  SUPER_ADMIN
+  EDITOR
+  VIEWER
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?
+  role          UserRole  @default(EDITOR)
+  
+  tenantId      String?
+  tenant        Tenant?   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  accounts      Account[]
+  sessions      Session[]
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  @@index([email])
+  @@index([tenantId])
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// Content models
+enum PageStatus {
+  DRAFT
+  STAGING
+  PUBLISHED
+}
+
+model Page {
+  id          String     @id @default(cuid())
+  slug        String
+  title       String
+  description String?
+  locale      String     @default("es-CO")
+  layout      Json       // Stores react-page layout JSON
+  status      PageStatus @default(DRAFT)
+  
+  // Meta tags for SEO
+  metaTitle       String?
+  metaDescription String?
+  metaKeywords    String?
+  ogImage         String?
+  
+  // Preview token for staging
+  previewToken    String?  @unique
+  
+  // Publishing timestamps
+  publishedAt     DateTime?
+  stagedAt        DateTime?
+  
+  tenantId        String
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  versions        PageVersion[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@unique([tenantId, slug, locale])
+  @@index([tenantId])
+  @@index([slug])
+  @@index([status])
+  @@index([previewToken])
+}
+
+model PageVersion {
+  id        String   @id @default(cuid())
+  pageId    String
+  page      Page     @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  
+  version   Int
+  layout    Json
+  title     String
+  status    PageStatus
+  
+  createdAt DateTime @default(now())
+  
+  @@unique([pageId, version])
+  @@index([pageId])
+}
+
+model MarkdownContent {
+  id          String   @id @default(cuid())
+  key         String   // Unique identifier for the markdown block
+  locale      String   @default("es-CO")
+  content     String   @db.Text
+  
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@unique([tenantId, key, locale])
+  @@index([tenantId])
+  @@index([key])
+}
+
+enum MediaType {
+  IMAGE
+  DOCUMENT
+}
+
+model Media {
+  id          String    @id @default(cuid())
+  filename    String
+  originalName String
+  mimeType    String
+  size        Int
+  type        MediaType
+  
+  // Storage paths
+  path        String    // Original file path
+  thumbnailPath String? // Thumbnail path (for images)
+  webpPath    String?   // WebP version path (for images)
+  
+  // Image dimensions (if applicable)
+  width       Int?
+  height      Int?
+  
+  // Security
+  scanned     Boolean   @default(false)
+  scanStatus  String?   // "clean", "infected", "pending"
+  
+  tenantId    String
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  uploadedBy  String?   // User ID who uploaded
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  @@index([tenantId])
+  @@index([type])
+  @@index([scanned])
+}
